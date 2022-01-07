@@ -4,11 +4,11 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 
-name:           hw3
+name:           hi
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/hw3#readme>
-homepage:       https://github.com/githubuser/hw3#readme
-bug-reports:    https://github.com/githubuser/hw3/issues
+description:    Please see the README on GitHub at <https://github.com/githubuser/hi#readme>
+homepage:       https://github.com/githubuser/hi#readme
+bug-reports:    https://github.com/githubuser/hi/issues
 author:         Author name here
 maintainer:     example@example.com
 copyright:      2021 Author name here
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/hw3
+  location: https://github.com/githubuser/hi
 
 library
   exposed-modules:
@@ -33,7 +33,7 @@ library
       HW3.Pretty
       Lib
   other-modules:
-      Paths_hw3
+      Paths_hi
   hs-source-dirs:
       src
   default-extensions:
@@ -74,10 +74,10 @@ library
     , zlib
   default-language: Haskell2010
 
-executable hw3-exe
+executable hi-exe
   main-is: Main.hs
   other-modules:
-      Paths_hw3
+      Paths_hi
   hs-source-dirs:
       app
   default-extensions:
@@ -104,7 +104,7 @@ executable hw3-exe
     , containers
     , directory
     , haskeline
-    , hw3
+    , hi
     , lens
     , megaparsec
     , parser-combinators
@@ -120,11 +120,11 @@ executable hw3-exe
     , zlib
   default-language: Haskell2010
 
-test-suite hw3-test
+test-suite hi-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_hw3
+      Paths_hi
   hs-source-dirs:
       test
   default-extensions:
@@ -151,7 +151,7 @@ test-suite hw3-test
     , containers
     , directory
     , haskeline
-    , hw3
+    , hi
     , lens
     , megaparsec
     , parser-combinators
