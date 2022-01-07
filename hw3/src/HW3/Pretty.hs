@@ -6,12 +6,13 @@ import Data.Foldable (Foldable(toList))
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import Data.Ratio (denominator, numerator)
-import Data.Scientific (fromRationalRepetendUnlimited)
+import Data.Scientific (fromRationalRepetendUnlimited, formatScientific, FPFormat(..))
 import Data.Word (Word8)
 import HW3.Base (HiAction(..), HiFun(..), HiValue(..))
 import Numeric (showHex)
 import Prettyprinter (Doc, Pretty(pretty), list, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle)
+import Data.Tuple ( swap )
 
 prettyValue :: HiValue -> Doc AnsiStyle
 prettyValue hi = case hi of
@@ -31,7 +32,8 @@ showRational num =
   if denominator num == 1 then
     show (numerator num)
   else case snd (fromRationalRepetendUnlimited num) of
-    Nothing -> show $ fst $ fromRationalRepetendUnlimited num
+    Nothing -> 
+      uncurry (formatScientific Fixed) $ swap $ fromRationalRepetendUnlimited num
     Just _ -> case quotRem (numerator num) (denominator num) of
       (n, i) -> case n of
         0 -> show i ++ "/" ++ show (denominator num)

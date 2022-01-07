@@ -65,11 +65,11 @@ evalE (HiExprApply applyFun list) = evalE applyFun >>= \case
     HiFunNot            -> com one (cons . not)
     HiFunAnd            -> funAnd list
     HiFunOr             -> funOr list
-    HiFunLessThan       -> funTwoArgEq (<=)
-    HiFunGreaterThan    -> funTwoArgEq (>=)
+    HiFunLessThan       -> funTwoArgEq (<)
+    HiFunGreaterThan    -> funTwoArgEq (>)
     HiFunEquals         -> funTwoArgEq (==)
-    HiFunNotLessThan    -> funTwoArgEq (>)
-    HiFunNotGreaterThan -> funTwoArgEq (<)
+    HiFunNotLessThan    -> funTwoArgEq (>=)
+    HiFunNotGreaterThan -> funTwoArgEq (<=)
     HiFunNotEquals      -> funTwoArgEq (/=)
     HiFunIf             -> parseIf list >>= evalE
     HiFunMul            -> funTwoArgMul
@@ -147,8 +147,7 @@ evalE (HiExprApply applyFun list) = evalE applyFun >>= \case
   funTwoArgMinus = com two (cons . uncurry ((-) @Rational))
                <|> com two (cons . uncurry fun)
     where
-      fun t1 t2 = (toRational $ diffUTCTime t1 t2) / pico
-      pico = 1000000000000
+      fun t1 t2 = (toRational $ diffUTCTime t1 t2)
 
   funTwoArgAdd :: ExceptT HiError m HiValue
   funTwoArgAdd = com two    (cons . uncurry ((+) @Rational))

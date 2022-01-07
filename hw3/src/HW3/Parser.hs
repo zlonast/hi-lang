@@ -9,7 +9,7 @@ import HW3.Base (HiAction(..), HiExpr(..), HiFun(..), HiValue)
 import HW3.Help (Dep(cons))
 import Text.Megaparsec
   (MonadParsec(eof, try), ParseErrorBundle, Parsec, between, choice, many, manyTill, runParser,
-  satisfy, (<|>), some)
+  satisfy, (<|>))
 import Text.Megaparsec.Char (char, space, space1, string)
 import qualified Text.Megaparsec.Char.Lexer as L
 
@@ -160,7 +160,7 @@ pDot :: Parser [HiExpr]
 pDot = do
   _ <- symbol "."
   l <- satisfy isAlpha
-  list <- some (satisfy (\c -> (isAlphaNum c) || c == '-'))
+  list <- many (satisfy (\c -> (isAlphaNum c) || c == '-'))
   -- lst <- ((:) <$> satisfy isAlpha <*> many (satisfy isAlphaNum)) `sepBy` char '-'
   return [(HiExprValue . cons . pack) (l : list)]
 
@@ -202,7 +202,8 @@ operatorTable =
     , binary "==" $ comm HiFunEquals
     ]
   , [ binary "&&" $ comm HiFunAnd
-    , binary "||" $ comm HiFunOr
+    ]
+  , [ binary "||" $ comm HiFunOr
     ]
   ]
 
