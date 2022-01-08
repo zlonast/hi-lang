@@ -1,4 +1,16 @@
-module HW3.Help where
+module HW3.Help (
+  Dep(..),
+  HiArgs(..),
+  HiArgs2(..),
+  MaybeHi(..),
+  Index(..),
+  Slice(..),
+  IndexFun(..),
+  Sem(..),
+  slesh,
+  comBase,
+  comBaseE,
+  isTrue) where
 
 import Control.Applicative (Alternative((<|>)))
 import Control.Lens (Getting, makePrisms, (^?))
@@ -70,8 +82,8 @@ word8 n | n < 0 || n > 255 = Left HiErrorInvalidArgument
         | otherwise = Right . toEnum $ n
 
 fromEnumM :: Integer -> Either HiError Int
-fromEnumM n | n <= (toInteger (maxBound :: Int)) 
-           && n >= (toInteger (minBound :: Int)) = Right $ fromEnum n 
+fromEnumM n | n <= (toInteger (maxBound :: Int))
+           && n >= (toInteger (minBound :: Int)) = Right $ fromEnum n
             | otherwise = Left HiErrorInvalidArgument
 
 class (MaybeHi a, MaybeHi b) => HiArgs2 a b where
@@ -184,11 +196,17 @@ fstNum [_,_] = Left HiErrorInvalidArgument
 fstNum _ = Left HiErrorArityMismatch
 
 comBase :: Monad m
-        => ExceptT e m a1 -> (a1 -> Either e a2) -> (a2 -> b) -> ExceptT e m b
+        => ExceptT e m a1
+        -> (a1 -> Either e a2)
+        -> (a2 -> b)
+        -> ExceptT e m b
 comBase evalList parse fun = comBaseE evalList parse (return . fun)
 
 comBaseE :: Monad m
-         => ExceptT e m a -> (a -> Either e b1) -> (b1 -> Either e b2) -> ExceptT e m b2
+         => ExceptT e m a
+         -> (a -> Either e b1)
+         -> (b1 -> Either e b2)
+         -> ExceptT e m b2
 comBaseE evalList parse fun = evalList >>= (ExceptT . return . (parse >=> fun))
 
 isTrue :: HiValue -> Bool

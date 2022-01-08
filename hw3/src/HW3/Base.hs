@@ -1,4 +1,10 @@
-module HW3.Base where
+module HW3.Base (
+  HiFun(..),
+  HiAction(..),
+  HiValue(..),
+  HiExpr(..),
+  HiError(..),
+  HiMonad(..)) where
 
 import Codec.Serialise (Serialise)
 import Data.ByteString (ByteString)

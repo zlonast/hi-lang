@@ -1,4 +1,7 @@
-module HW3.Action where
+module HW3.Action (
+  HiPermission(..),
+  PermissionException(..),
+  HIO(..)) where
 
 import Control.Exception (Exception, throwIO)
 import Control.Monad.IO.Class (MonadIO(..))
@@ -23,12 +26,11 @@ data HiPermission =
     AllowRead
   | AllowWrite
   | AllowTime
-  deriving (Eq, Ord, Show)
+  deriving stock (Eq, Ord, Show)
 
 data PermissionException = PermissionRequired HiPermission
-  deriving (Eq, Ord, Show)
-
-instance Exception PermissionException
+  deriving stock (Eq, Ord, Show)
+  deriving anyclass Exception
 
 newtype HIO a = HIO { runHIO :: Set HiPermission -> IO a }
   deriving stock Functor

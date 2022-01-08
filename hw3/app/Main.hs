@@ -3,7 +3,7 @@ module Main where
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Data.Foldable (forM_)
 import Data.Set (fromList)
-import HW3.Action (HIO(..), HiPermission(AllowRead, AllowTime, AllowWrite))
+import HW3.Action (HIO(..), HiPermission(..))
 import HW3.Evaluator (eval)
 import HW3.Parser (parse)
 import HW3.Pretty (prettyValue)

@@ -1,4 +1,4 @@
-module HW3.Pretty where
+module HW3.Pretty (prettyValue) where
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
@@ -6,13 +6,13 @@ import Data.Foldable (Foldable(toList))
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import Data.Ratio (denominator, numerator)
-import Data.Scientific (fromRationalRepetendUnlimited, formatScientific, FPFormat(..))
+import Data.Scientific (FPFormat(..), formatScientific, fromRationalRepetendUnlimited)
+import Data.Tuple (swap)
 import Data.Word (Word8)
 import HW3.Base (HiAction(..), HiFun(..), HiValue(..))
 import Numeric (showHex)
 import Prettyprinter (Doc, Pretty(pretty), list, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle)
-import Data.Tuple ( swap )
 
 prettyValue :: HiValue -> Doc AnsiStyle
 prettyValue hi = case hi of
@@ -31,10 +31,9 @@ showRational :: Rational -> String
 showRational num =
   if denominator num == 1 then
     show (numerator num)
-  else case snd (fromRationalRepetendUnlimited num) of
-    Nothing -> 
-      uncurry (formatScientific Fixed) $ swap $ fromRationalRepetendUnlimited num
-    Just _ -> case quotRem (numerator num) (denominator num) of
+  else case (fromRationalRepetendUnlimited num) of
+    tup@(_, Nothing) -> uncurry (formatScientific Fixed) $ swap $ tup
+    (_, Just _) -> case quotRem (numerator num) (denominator num) of
       (n, i) -> case n of
         0 -> show i ++ "/" ++ show (denominator num)
         _ -> if i < 0 then

@@ -1,4 +1,4 @@
-module HW3.Parser where
+module HW3.Parser (parse) where
 
 import Control.Monad.Combinators.Expr (Operator(..), makeExprParser)
 import qualified Data.ByteString as B
@@ -161,8 +161,7 @@ pDot = do
   _ <- symbol "."
   l <- satisfy isAlpha
   list <- many (satisfy (\c -> (isAlphaNum c) || c == '-'))
-  -- lst <- ((:) <$> satisfy isAlpha <*> many (satisfy isAlphaNum)) `sepBy` char '-'
-  return [(HiExprValue . cons . pack) (l : list)]
+  return [HiExprValue . cons . pack $ l : list]
 
 recApply :: HiExpr -> [[HiExpr]] -> HiExpr
 recApply fun [] = fun
@@ -187,33 +186,33 @@ pExpr = makeExprParser pApplyR operatorTable
 operatorTable :: [[Operator Parser HiExpr]]
 operatorTable =
   [ listNot
-  , [ binaryN ">=" $ comm HiFunNotLessThan
-    , binaryN "<=" $ comm HiFunNotGreaterThan
-    , binaryN "/=" $ comm HiFunNotEquals
+  , [ binN ">=" $ comm HiFunNotLessThan
+    , binN "<=" $ comm HiFunNotGreaterThan
+    , binN "/=" $ comm HiFunNotEquals
     ]
-  , [ binaryL "*" $ comm HiFunMul
-    , binaryL "/" $ comm HiFunDiv
+  , [ binL "*" $ comm HiFunMul
+    , binL "/" $ comm HiFunDiv
     ]
-  , [ binaryL "+" $ comm HiFunAdd
-    , binaryL "-" $ comm HiFunSub
+  , [ binL "+" $ comm HiFunAdd
+    , binL "-" $ comm HiFunSub
     ]
-  , [ binaryN "<" $ comm HiFunLessThan
-    , binaryN ">" $ comm HiFunGreaterThan
-    , binaryN "==" $ comm HiFunEquals
+  , [ binN "<" $ comm HiFunLessThan
+    , binN ">" $ comm HiFunGreaterThan
+    , binN "==" $ comm HiFunEquals
     ]
-  , [ binaryR "&&" $ comm HiFunAnd
+  , [ binR "&&" $ comm HiFunAnd
     ]
-  , [ binaryR "||" $ comm HiFunOr
+  , [ binR "||" $ comm HiFunOr
     ]
   ]
 
 listNot :: [Operator Parser HiExpr]
-listNot = fmap (\a -> binaryL ([a] ++ "-") $ undefined) ['a' .. 'z']
+listNot = fmap (\a -> binL ([a] ++ "-") $ undefined) ['a' .. 'z']
 
 comm :: HiFun -> HiExpr -> HiExpr -> HiExpr
 comm fun a b = HiExprApply (HiExprValue $ cons fun) [a, b]
 
-binaryL, binaryN, binaryR :: String -> (HiExpr -> HiExpr -> HiExpr) -> Operator Parser HiExpr
-binaryL name f = InfixL (f <$ symbol name)
-binaryN name f = InfixN (f <$ symbol name)
-binaryR name f = InfixR (f <$ symbol name)
+binL, binN, binR :: String -> (HiExpr -> HiExpr -> HiExpr) -> Operator Parser HiExpr
+binL name f = InfixL (f <$ symbol name)
+binN name f = InfixN (f <$ symbol name)
+binR name f = InfixR (f <$ symbol name)
