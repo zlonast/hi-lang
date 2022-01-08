@@ -1,22 +1,22 @@
 module HW3.Action where
 
 import Control.Exception (Exception, throwIO)
-import Control.Monad (ap)
 import Control.Monad.IO.Class (MonadIO(..))
+import Control.Monad.Trans.Reader (ReaderT(..))
 import qualified Data.ByteString as B
 import Data.Functor ((<&>))
 import qualified Data.Sequence as S
 import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Text as T
-import Data.Text.IO (putStrLn, readFile)
+import Data.Text.Encoding (decodeUtf8')
+import Data.Text.IO (putStrLn)
 import Data.Time.Clock (getCurrentTime)
 import HW3.Base (HiAction(..), HiMonad(..))
 import HW3.Help (Dep(..))
-import Prelude hiding (putStrLn, readFile)
+import Prelude hiding (putStrLn)
 import System.Directory
-  (createDirectory, doesDirectoryExist, doesFileExist, getCurrentDirectory, listDirectory,
-  setCurrentDirectory)
+  (createDirectory, doesFileExist, getCurrentDirectory, listDirectory, setCurrentDirectory)
 import System.Random (newStdGen, uniformR)
 
 data HiPermission =
@@ -32,18 +32,9 @@ instance Exception PermissionException
 
 newtype HIO a = HIO { runHIO :: Set HiPermission -> IO a }
   deriving stock Functor
-
-instance Applicative HIO where
-  pure  = return
-  (<*>) = ap
-
-instance Monad HIO where
-  return a = HIO $ \_ -> return a
-  (>>=) hio fun = HIO $ \set ->
-    (>>=) (runHIO hio set) (\a -> runHIO (fun a) set)
-
-instance MonadIO HIO where
-  liftIO io = HIO $ \_ -> io
+  deriving Applicative via ReaderT (Set HiPermission) IO
+  deriving Monad       via ReaderT (Set HiPermission) IO
+  deriving MonadIO     via ReaderT (Set HiPermission) IO
 
 ask :: HIO (Set HiPermission)
 ask = HIO $ \set -> return set
@@ -53,14 +44,11 @@ instance HiMonad HIO where
     set <- ask
     liftIO $ if Set.member AllowRead set then do
       isFile <- doesFileExist path
-      if isFile then
-        readFile path <&> cons
-      else do
-        isDir <- doesDirectoryExist path
-        if isDir then
-          listDirectory path <&> cons . S.fromList . map (cons . T.pack)
-        else
-          error "not file or dir"
+      if isFile then do
+        bytes <- B.readFile path
+        return $ either (\_ -> cons bytes) cons (decodeUtf8' bytes)
+      else
+        listDirectory path <&> cons . S.fromList . map (cons . T.pack)
     else
       throwIO (PermissionRequired AllowRead)
 
@@ -88,7 +76,7 @@ instance HiMonad HIO where
   runAction HiActionCwd = do
     set <- ask
     liftIO $ if Set.member AllowRead set then
-      getCurrentDirectory <&> cons . T.pack . show
+      getCurrentDirectory <&> cons . T.pack
     else
       throwIO (PermissionRequired AllowRead)
 

@@ -187,31 +187,33 @@ pExpr = makeExprParser pApplyR operatorTable
 operatorTable :: [[Operator Parser HiExpr]]
 operatorTable =
   [ listNot
-  , [ binary ">=" $ comm HiFunNotLessThan
-    , binary "<=" $ comm HiFunNotGreaterThan
-    , binary "/=" $ comm HiFunNotEquals
+  , [ binaryN ">=" $ comm HiFunNotLessThan
+    , binaryN "<=" $ comm HiFunNotGreaterThan
+    , binaryN "/=" $ comm HiFunNotEquals
     ]
-  , [ binary "*" $ comm HiFunMul
-    , binary "/" $ comm HiFunDiv
+  , [ binaryL "*" $ comm HiFunMul
+    , binaryL "/" $ comm HiFunDiv
     ]
-  , [ binary "+" $ comm HiFunAdd
-    , binary "-" $ comm HiFunSub
+  , [ binaryL "+" $ comm HiFunAdd
+    , binaryL "-" $ comm HiFunSub
     ]
-  , [ binary "<" $ comm HiFunLessThan
-    , binary ">" $ comm HiFunGreaterThan
-    , binary "==" $ comm HiFunEquals
+  , [ binaryN "<" $ comm HiFunLessThan
+    , binaryN ">" $ comm HiFunGreaterThan
+    , binaryN "==" $ comm HiFunEquals
     ]
-  , [ binary "&&" $ comm HiFunAnd
+  , [ binaryR "&&" $ comm HiFunAnd
     ]
-  , [ binary "||" $ comm HiFunOr
+  , [ binaryR "||" $ comm HiFunOr
     ]
   ]
 
 listNot :: [Operator Parser HiExpr]
-listNot = fmap (\a -> binary ([a] ++ "-") $ undefined) ['a' .. 'z']
+listNot = fmap (\a -> binaryL ([a] ++ "-") $ undefined) ['a' .. 'z']
 
 comm :: HiFun -> HiExpr -> HiExpr -> HiExpr
 comm fun a b = HiExprApply (HiExprValue $ cons fun) [a, b]
 
-binary :: String -> (HiExpr -> HiExpr -> HiExpr) -> Operator Parser HiExpr
-binary name f = InfixL (f <$ symbol name)
+binaryL, binaryN, binaryR :: String -> (HiExpr -> HiExpr -> HiExpr) -> Operator Parser HiExpr
+binaryL name f = InfixL (f <$ symbol name)
+binaryN name f = InfixN (f <$ symbol name)
+binaryR name f = InfixR (f <$ symbol name)

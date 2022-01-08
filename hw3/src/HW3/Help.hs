@@ -84,6 +84,7 @@ instance HiArgs2 (Sem (Seq HiValue)) Integer
 instance HiArgs2 (Sem ByteString) Integer
 instance HiArgs2 HiFun (Seq HiValue)
 instance HiArgs2 UTCTime Rational
+instance HiArgs2 Text ByteString
 
 class MaybeHi a where
   maybehi :: HiValue -> Either HiError a

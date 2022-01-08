@@ -4,11 +4,11 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 
-name:           hi
+name:           hw3
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/hi#readme>
-homepage:       https://github.com/githubuser/hi#readme
-bug-reports:    https://github.com/githubuser/hi/issues
+description:    Please see the README on GitHub at <https://github.com/githubuser/hw3#readme>
+homepage:       https://github.com/githubuser/hw3#readme
+bug-reports:    https://github.com/githubuser/hw3/issues
 author:         Author name here
 maintainer:     example@example.com
 copyright:      2021 Author name here
@@ -21,7 +21,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/hi
+  location: https://github.com/githubuser/hw3
 
 library
   exposed-modules:
@@ -33,7 +33,7 @@ library
       HW3.Pretty
       Lib
   other-modules:
-      Paths_hi
+      Paths_hw3
   hs-source-dirs:
       src
   default-extensions:
@@ -53,6 +53,7 @@ library
       GeneralizedNewtypeDeriving
       ScopedTypeVariables
       LambdaCase
+      DerivingVia
   build-depends:
       base >=4.7 && <5
     , bytestring
@@ -77,7 +78,7 @@ library
 executable hi-exe
   main-is: Main.hs
   other-modules:
-      Paths_hi
+      Paths_hw3
   hs-source-dirs:
       app
   default-extensions:
@@ -97,6 +98,7 @@ executable hi-exe
       GeneralizedNewtypeDeriving
       ScopedTypeVariables
       LambdaCase
+      DerivingVia
   ghc-options: -threaded -rtsopts -Wall -Werror -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -104,7 +106,7 @@ executable hi-exe
     , containers
     , directory
     , haskeline
-    , hi
+    , hw3
     , lens
     , megaparsec
     , parser-combinators
@@ -124,7 +126,7 @@ test-suite hi-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Paths_hi
+      Paths_hw3
   hs-source-dirs:
       test
   default-extensions:
@@ -144,6 +146,7 @@ test-suite hi-test
       GeneralizedNewtypeDeriving
       ScopedTypeVariables
       LambdaCase
+      DerivingVia
   ghc-options: -threaded -rtsopts -Wall -Werror -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -151,7 +154,7 @@ test-suite hi-test
     , containers
     , directory
     , haskeline
-    , hi
+    , hw3
     , lens
     , megaparsec
     , parser-combinators

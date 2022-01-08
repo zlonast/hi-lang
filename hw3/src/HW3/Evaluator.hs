@@ -198,9 +198,11 @@ evalE (HiExprApply applyFun list) = evalE applyFun >>= \case
 
   evalActionWR :: ExceptT HiError m HiValue
   evalActionWR = com two (cons . funWrite)
+             <|> com oneone (cons . funWrite')
              <|> com (two @Int) (cons . uncurry HiActionRand)
     where
-      funWrite (T.unpack -> t1, encodeUtf8 -> t2) = HiActionWrite t1 t2
+      funWrite' (T.unpack -> t1, byte) = HiActionWrite t1 byte
+      funWrite (text, encodeUtf8 -> t2) = funWrite' (text, t2)
 
   parseJSON :: ((HiValue, HiValue) -> HiValue) -> ExceptT HiError m HiValue
   parseJSON fun = com one (cons . S.fromList . sort . fmap fun . M.toList)
