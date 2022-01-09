@@ -8,7 +8,6 @@ import qualified Data.Map.Strict as M
 import Data.Ratio (denominator, numerator)
 import Data.Scientific (FPFormat(..), formatScientific, fromRationalRepetendUnlimited)
 import Data.Tuple (swap)
-import Data.Word (Word8)
 import HW3.Base (HiAction(..), HiFun(..), HiValue(..))
 import Numeric (showHex)
 import Prettyprinter (Doc, Pretty(pretty), list, viaShow)
@@ -62,7 +61,7 @@ prettyAction hi = pretty $ case hi of
 showByteString :: ByteString -> String
 showByteString bytes = "[# " ++ showWords (B.unpack bytes) ++ "#]"
 
-showWords :: [Word8] -> String
+showWords :: (Integral a, Show a) => [a] -> [Char]
 showWords (a : as) = plusZero (showHex a "") ++  " " ++ showWords as
 showWords [] = ""
 

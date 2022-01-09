@@ -1,12 +1,11 @@
 module HW3.Help (
   Dep(..),
-  HiArgs(..),
-  HiArgs2(..),
+  one,
+  two, 
   MaybeHi(..),
   Index(..),
   Slice(..),
   IndexFun(..),
-  Sem(..),
   slesh,
   comBase,
   comBaseE,
@@ -46,57 +45,27 @@ instance Dep HiAction              where cons = HiValueAction
 instance Dep UTCTime               where cons = HiValueTime
 instance Dep (Map HiValue HiValue) where cons = HiValueDict
 
-class MaybeHi a => HiArgs a where
-  one :: [HiValue] -> Either HiError a
-  one [maybehi -> a] = a
-  one _ = Left HiErrorArityMismatch
-
-  two :: [HiValue] -> Either HiError (a, a)
-  two [maybehi -> a, maybehi -> b] = a >>= flip fmap b . (,)
-  two _ = Left HiErrorArityMismatch
-
-instance HiArgs Bool
-instance HiArgs Rational
-instance HiArgs HiFun
-instance HiArgs Text
-instance HiArgs (Seq HiValue)
-instance HiArgs ByteString
-instance HiArgs HiAction
-instance HiArgs UTCTime
-instance HiArgs (Map HiValue HiValue)
-instance HiArgs HiValue
-instance HiArgs Int
-instance HiArgs ()
-
-data Sem a = Semigroup a => Sem a
-
 tranc :: Rational -> Either HiError Integer
-tranc num = do
-  if denominator num == 1 then
-    Right $ numerator num
-  else
-    Left HiErrorInvalidArgument
+tranc num = case denominator num == 1 of 
+  True  -> Right $ numerator num
+  False -> Left HiErrorInvalidArgument
 
 word8 :: Int -> Either HiError Word8
 word8 n | n < 0 || n > 255 = Left HiErrorInvalidArgument
         | otherwise = Right . toEnum $ n
 
-fromEnumM :: Integer -> Either HiError Int
-fromEnumM n | n <= (toInteger (maxBound :: Int))
-           && n >= (toInteger (minBound :: Int)) = Right $ fromEnum n
-            | otherwise = Left HiErrorInvalidArgument
+toInt :: Integer -> Either HiError Int
+toInt n | n <= (toInteger (maxBound :: Int))
+       && n >= (toInteger (minBound :: Int)) = Right $ fromEnum n
+        | otherwise = Left HiErrorInvalidArgument
 
-class (MaybeHi a, MaybeHi b) => HiArgs2 a b where
-  oneone :: [HiValue] -> Either HiError (a, b)
-  oneone [maybehi -> a, maybehi -> b] = a >>= flip fmap b . (,)
-  oneone _ = Left HiErrorArityMismatch
+one :: MaybeHi a => [HiValue] -> Either HiError a
+one [maybehi -> a] = a
+one _ = Left HiErrorArityMismatch
 
-instance HiArgs2 (Sem Text) Integer
-instance HiArgs2 (Sem (Seq HiValue)) Integer
-instance HiArgs2 (Sem ByteString) Integer
-instance HiArgs2 HiFun (Seq HiValue)
-instance HiArgs2 UTCTime Rational
-instance HiArgs2 Text ByteString
+two :: (MaybeHi a, MaybeHi b) => [HiValue] -> Either HiError (a, b)
+two [maybehi -> a, maybehi -> b] = a >>= flip fmap b . (,)
+two _ = Left HiErrorArityMismatch
 
 class MaybeHi a where
   maybehi :: HiValue -> Either HiError a
@@ -106,11 +75,8 @@ except prism foo = case foo ^? prism of
   Nothing -> Left HiErrorInvalidArgument
   Just a  -> Right a
 
-instance MaybeHi (Sem Text)            where maybehi = (=<<) (return . Sem) . maybehi
-instance MaybeHi (Sem (Seq HiValue))   where maybehi = (=<<) (return . Sem) . maybehi
-instance MaybeHi (Sem ByteString)      where maybehi = (=<<) (return . Sem) . maybehi
 instance MaybeHi Integer               where maybehi = (=<<) tranc . maybehi
-instance MaybeHi Int                   where maybehi = (=<<) fromEnumM . maybehi @Integer
+instance MaybeHi Int                   where maybehi = (=<<) toInt . maybehi @Integer
 instance MaybeHi Word8                 where maybehi = (=<<) word8 . maybehi
 instance MaybeHi Bool                  where maybehi = except _HiValueBool
 instance MaybeHi Rational              where maybehi = except _HiValueNumber
@@ -172,11 +138,11 @@ class (Slice a, Index a, Dep a) => IndexFun a where
            => ExceptT HiError m [HiValue]
            -> a
            -> ExceptT HiError m HiValue
-  indexFun list lst = comBase list one (index lst)
-                  <|> comBase list (two @()) (\_ -> fun 0 endN)
-                  <|> comBase list sndNum (fun 0)
-                  <|> comBase list fstNum (flip fun endN)
-                  <|> comBase list (two @Int) (uncurry fun)
+  indexFun list lst = comBase list one           (index lst)
+                  <|> comBase list (two @() @()) (\_ -> fun 0 endN)
+                  <|> comBase list sndNum        (fun 0)
+                  <|> comBase list fstNum        (flip fun endN)
+                  <|> comBase list two           (uncurry fun)
     where
       fun a b = cons $ (slice a b (len lst)) lst
       endN = (len lst)
