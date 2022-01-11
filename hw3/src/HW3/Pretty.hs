@@ -8,15 +8,16 @@ import qualified Data.Map.Strict as M
 import Data.Ratio (denominator, numerator)
 import Data.Scientific (FPFormat(..), formatScientific, fromRationalRepetendUnlimited)
 import Data.Tuple (swap)
-import HW3.Base (HiAction(..), HiFun(..), HiValue(..))
+import HW3.Base (HiAction(..), HiValue(..))
 import Numeric (showHex)
 import Prettyprinter (Doc, Pretty(pretty), list, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle)
 
+-- | print hivalue
 prettyValue :: HiValue -> Doc AnsiStyle
 prettyValue hi = case hi of
   HiValueNumber num   -> pretty $ showRational num
-  HiValueFunction fun -> prettyFun fun
+  HiValueFunction fun -> viaShow fun
   HiValueBool bool    -> pretty $ if bool then "true" else "false"
   HiValueNull         -> pretty "null"
   HiValueString str   -> viaShow str
@@ -26,6 +27,7 @@ prettyValue hi = case hi of
   HiValueTime time    -> pretty $ "parse-time(" ++ show (show time) ++ ")"
   HiValueDict dict    -> pretty $ "{ " ++ showDict (M.toList dict) ++ " }"
 
+-- | parse numbers
 showRational :: Rational -> String
 showRational num =
   if denominator num == 1 then
@@ -40,12 +42,14 @@ showRational num =
           else
             show n ++ " + " ++ show i ++ "/" ++ show (denominator num)
 
+-- | special show dict
 showDict :: [(HiValue, HiValue)] -> String
 showDict dict = L.intercalate ", " $ map (\(a, b) -> showDots (a, b)) dict
   where
     showDots (a, b) = showP a ++ ": " ++ showP b
     showP = show . prettyValue
 
+-- | not evaluating actions
 prettyAction :: HiAction -> Doc AnsiStyle
 prettyAction hi = pretty $ case hi of
   HiActionRead path  -> "read(" ++ show path ++ ")"
@@ -58,57 +62,16 @@ prettyAction hi = pretty $ case hi of
   HiActionRand a b   -> "rand(" ++ show a ++ ", " ++ show b ++ ")"
   HiActionEcho text  -> "echo(" ++ show text ++ ")"
 
+-- | show bytes
 showByteString :: ByteString -> String
 showByteString bytes = "[# " ++ showWords (B.unpack bytes) ++ "#]"
 
+-- | show words
 showWords :: (Integral a, Show a) => [a] -> [Char]
 showWords (a : as) = plusZero (showHex a "") ++  " " ++ showWords as
 showWords [] = ""
 
+-- | fix bug with one hex value
 plusZero :: String -> String
 plusZero [a] = "0" ++ [a]
 plusZero a = a
-
-prettyFun :: HiFun -> Doc AnsiStyle
-prettyFun hi = pretty $ case hi of
-  HiFunDiv            -> "div"
-  HiFunMul            -> "mul"
-  HiFunAdd            -> "add"
-  HiFunSub            -> "sub"
-  HiFunNot            -> "not"
-  HiFunAnd            -> "and"
-  HiFunOr             -> "or"
-  HiFunLessThan       -> "less-than"
-  HiFunGreaterThan    -> "greater-than"
-  HiFunEquals         -> "equals"
-  HiFunNotLessThan    -> "not-less-than"
-  HiFunNotGreaterThan -> "not-greater-than"
-  HiFunNotEquals      -> "not-equals"
-  HiFunIf             -> "if"
-  HiFunLength         -> "length"
-  HiFunToUpper        -> "to-upper"
-  HiFunToLower        -> "to-lower"
-  HiFunReverse        -> "reverse"
-  HiFunTrim           -> "trim"
-  HiFunList           -> "list"
-  HiFunRange          -> "range"
-  HiFunFold           -> "fold"
-  HiFunPackBytes      -> "pack-bytes"
-  HiFunUnpackBytes    -> "unpack-bytes"
-  HiFunEncodeUtf8     -> "encode-utf8"
-  HiFunDecodeUtf8     -> "decode-utf8"
-  HiFunZip            -> "zip"
-  HiFunUnzip          -> "unzip" 
-  HiFunSerialise      -> "serialise"
-  HiFunDeserialise    -> "deserialise"
-  HiFunRead           -> "read"
-  HiFunWrite          -> "write"
-  HiFunMkDir          -> "mkdir"
-  HiFunChDir          -> "cd"
-  HiFunParseTime      -> "parse-time"
-  HiFunRand           -> "rand"
-  HiFunEcho           -> "echo"
-  HiFunCount          -> "count"
-  HiFunKeys           -> "keys"
-  HiFunValues         -> "values"
-  HiFunInvert         -> "invert"

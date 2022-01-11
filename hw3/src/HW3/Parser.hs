@@ -1,10 +1,12 @@
+
 module HW3.Parser (parse) where
 
 import Control.Monad.Combinators.Expr (Operator(..), makeExprParser)
 import qualified Data.ByteString as B
-import Data.Char (isAlpha, isAlphaNum)
+import Data.Char (digitToInt, isAlpha, isAlphaNum, isHexDigit)
 import Data.Text (pack)
 import Data.Void (Void)
+import Data.Word (Word8)
 import HW3.Base (HiAction(..), HiExpr(..), HiFun(..), HiValue)
 import HW3.Help (Dep(cons))
 import Text.Megaparsec
@@ -15,9 +17,11 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser = Parsec Void String
 
+-- | funcrion parse or not String to HiExpr
 parse :: String -> Either (ParseErrorBundle String Void) HiExpr
 parse = runParser (space *> pExpr <* eof) ""
 
+-- | function for space and comments
 sc :: Parser ()
 sc = L.space
   space1                         -- (2)
@@ -33,20 +37,16 @@ symbol = L.symbol sc
 number :: (Real a, Num a) => Parser a -> Parser HiExpr
 number = fmap (HiExprValue . cons . toRational) . L.signed sc
 
-parens :: Parser HiExpr -> Parser HiExpr
-parens = between (symbol "(") (symbol ")")
+parens :: Parser HiExpr
+parens = between (symbol "(") (symbol ")") pExpr
 
 parensSeq :: Parser HiExpr
-parensSeq = between (symbol "[") (symbol "]") pListSeq
-
-pListSeq :: Parser HiExpr
-pListSeq = HiExprApply (HiExprValue $ cons HiFunList) <$> (try pListBase <|> return [])
+parensSeq = between (symbol "[") (symbol "]")
+  (HiExprApply (HiExprValue $ cons HiFunList) <$> (try pListBase <|> return []))
 
 parensJSON :: Parser HiExpr
-parensJSON = between (symbol "{") (symbol "}") pListJSON
-
-pListJSON :: Parser HiExpr
-pListJSON = HiExprDict <$> (try parseBaseJSON <|> return [])
+parensJSON = between (symbol "{") (symbol "}")
+  (HiExprDict <$> (try parseBaseJSON <|> return []))
 
 parseOneArg :: Parser (HiExpr, HiExpr)
 parseOneArg = do
@@ -55,13 +55,10 @@ parseOneArg = do
   value <- pExpr
   return (key, value)
 
-parseOneArgDot :: Parser (HiExpr, HiExpr)
-parseOneArgDot = symbol "," >> parseOneArg
-
 parseBaseJSON :: Parser [(HiExpr, HiExpr)]
-parseBaseJSON = do 
-  l <- parseOneArg 
-  list <- many parseOneArgDot
+parseBaseJSON = do
+  l <- parseOneArg
+  list <- many (symbol "," >> parseOneArg)
   return (l : list)
 
 pCommonFun :: String -> HiFun -> Parser HiExpr
@@ -79,27 +76,36 @@ parensText = lexeme $ HiExprValue . cons . pack
             <$> (char '"' >> manyTill L.charLiteral (char '"'))
 
 parensByte :: Parser HiExpr
-parensByte = lexeme $ HiExprValue . cons <$> pByte
+parensByte = lexeme $ HiExprValue . cons <$> do
+  _ <- lexeme $ symbol "[#"
+  bytes <- many oneWord8
+  _ <- lexeme $ symbol "#]"
+  return $ B.pack (bytes)
 
-pByte :: Parser B.ByteString
-pByte = do
-  _ <- symbol "[#"
-  bytes <- many (lexeme L.hexadecimal)
-  _ <- symbol "#]"
-  return $ B.pack bytes
+oneWord8 :: Parser Word8
+oneWord8 = do
+  a <- lexeme $ satisfy isHexDigit
+  b <- satisfy isHexDigit
+  lexeme $ return $ fromIntegral (digitToInt a * 16 + digitToInt b)
 
 pTerm :: Parser HiExpr
 pTerm = lexeme $ choice
   [ try (number (lexeme L.scientific))
   , (number @Integer) (lexeme L.decimal)
   , parensText
-  , parens pExpr
+  , parens
+  , pCommon    "true"             $ cons True
+  , pCommon    "false"            $ cons False
+  , pCommon    "null"             $ cons ()
+  , parensByte
+  , parensSeq
+  , parensJSON
+  , pCommon    "cwd"              $ cons HiActionCwd
+  , pCommon    "now"              $ cons HiActionNow
   , pCommonFun "div"              HiFunDiv
   , pCommonFun "mul"              HiFunMul
   , pCommonFun "add"              HiFunAdd
   , pCommonFun "sub"              HiFunSub
-  , pCommon    "true"             $ cons True
-  , pCommon    "false"            $ cons False
   , pCommonFun "and"              HiFunAnd
   , pCommonFun "or"               HiFunOr
   , pCommonFun "less-than"        HiFunLessThan
@@ -115,12 +121,9 @@ pTerm = lexeme $ choice
   , pCommonFun "to-lower"         HiFunToLower
   , pCommonFun "reverse"          HiFunReverse
   , pCommonFun "trim"             HiFunTrim
-  , pCommon    "null"             $ cons ()
   , pCommonFun "list"             HiFunList
   , pCommonFun "range"            HiFunRange
   , pCommonFun "fold"             HiFunFold
-  , parensByte
-  , parensSeq
   , pCommonFun "pack-bytes"       HiFunPackBytes
   , pCommonFun "unpack-bytes"     HiFunUnpackBytes
   , pCommonFun "encode-utf8"      HiFunEncodeUtf8
@@ -133,25 +136,19 @@ pTerm = lexeme $ choice
   , pCommonFun "write"            HiFunWrite
   , pCommonFun "mkdir"            HiFunMkDir
   , pCommonFun "cd"               HiFunChDir
-  , pCommon    "cwd"              $ cons HiActionCwd
   , pCommonFun "parse-time"       HiFunParseTime
-  , pCommon    "now"              $ cons HiActionNow
   , pCommonFun "rand"             HiFunRand
   , pCommonFun "echo"             HiFunEcho
   , pCommonFun "count"            HiFunCount
   , pCommonFun "keys"             HiFunKeys
   , pCommonFun "values"           HiFunValues
   , pCommonFun "invert"           HiFunInvert
-  , parensJSON
   ]
 
-pBase :: Parser HiExpr
-pBase = symbol "," >> pExpr
-
 pListBase :: Parser [HiExpr]
-pListBase = do 
-  l <- pExpr 
-  list <- many pBase
+pListBase = do
+  l <- pExpr
+  list <- many (symbol "," >> pExpr)
   return (l : list)
 
 pList :: Parser [HiExpr]
@@ -182,13 +179,9 @@ pApplyR' fun = do
   else
     pApplyR' $ HiExprRun $ recApply fun (reverse lists)
 
-pApplyR :: Parser HiExpr
-pApplyR = pTerm >>= pApplyR'
-
 pExpr :: Parser HiExpr
-pExpr = makeExprParser pApplyR operatorTable
+pExpr = makeExprParser (pTerm >>= pApplyR') operatorTable
 
--- todo: бага с мапой
 operatorTable :: [[Operator Parser HiExpr]]
 operatorTable =
   [ listNot

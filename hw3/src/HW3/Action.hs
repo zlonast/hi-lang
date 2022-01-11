@@ -30,13 +30,14 @@ data PermissionException = PermissionRequired HiPermission
   deriving anyclass Exception
 
 newtype HIO a = HIO { runHIO :: Set HiPermission -> IO a }
-  deriving (Functor, Applicative, Monad, MonadIO) 
+  deriving (Functor, Applicative, Monad, MonadIO)
     via ReaderT (Set HiPermission) IO
 
+-- | common throwIO when we don't have access to value
 common :: HiPermission -> IO HiValue -> HIO HiValue
-common perm result = HIO $ \set -> 
-  liftIO $ case Set.member perm set of 
-    True  -> result 
+common perm result = HIO $ \set ->
+  liftIO $ case Set.member perm set of
+    True  -> result
     False -> throwIO (PermissionRequired perm)
 
 instance HiMonad HIO where

@@ -30,18 +30,27 @@ import HW3.Help
 import Prelude hiding (div, map, seq)
 import Text.Read (readMaybe)
 
-type MyType m = ExceptT HiError m HiValue
+-- | ExceptT is to big and dont't have a lot of information
+type ExVal m = ExceptT HiError m HiValue
 
+-- | evaluate expr when call evalE
 eval :: HiMonad m => HiExpr -> m (Either HiError HiValue)
 eval = runExceptT . evalE
 
-evalE :: HiMonad m => HiExpr -> MyType m
+{- | we have four type expr
+  1) HiExprRun we need to run it
+  2) HiExprValue we need to return it
+  3) HiExprDict we need to create it
+  4) HiExprApply we need evaluate it
+-}
+evalE :: HiMonad m => HiExpr -> ExVal m
 evalE (HiExprRun exprun)          = runActExp exprun
 evalE (HiExprValue val)           = return val
 evalE (HiExprDict json)           = exprDict json
-evalE (HiExprApply applyFun list) = evalE applyFun >>= \x -> getFun x list
+evalE (HiExprApply applyFun list) = evalE applyFun >>= flip getFun list
 
-runActExp :: HiMonad m => HiExpr -> MyType m
+-- | runAction or throw HiErrorInvalidFunction
+runActExp :: HiMonad m => HiExpr -> ExVal m
 runActExp exprun = case exprun of
   HiExprValue (HiValueAction HiActionCwd) -> run HiActionCwd
   HiExprValue (HiValueAction HiActionNow) -> run HiActionNow
@@ -52,22 +61,27 @@ runActExp exprun = case exprun of
   where
     run = lift . runAction
 
-exprDict :: HiMonad m => [(HiExpr, HiExpr)] -> MyType m
+-- | create dict from list tupele expr
+exprDict :: HiMonad m => [(HiExpr, HiExpr)] -> ExVal m
 exprDict json = (mapM fun json) <&> (cons . M.fromList)
   where
     fun (a, b) = evalE a >>= (<&>) (evalE b) . (,)
 
+-- | evaluate list exprs
 evalList :: HiMonad m => [HiExpr] -> ExceptT HiError m [HiValue]
 evalList list = mapM evalE list
 
+-- | combinator for (pattern matching one argument) and (apply fun)
 oneArg :: (Dep a, MaybeHi b, HiMonad m)
-        => (b -> a) -> [HiExpr] -> MyType m
+        => (b -> a) -> [HiExpr] -> ExVal m
 oneArg fun = comBase one (cons . fun) . evalList
 
+-- | combinator for (pattern matching two argument) and (apply uncurry fun)
 twoArg :: (Dep a, MaybeHi b, MaybeHi c, HiMonad m)
-        => (b -> c -> a) -> [HiExpr] -> MyType m
+        => (b -> c -> a) -> [HiExpr] -> ExVal m
 twoArg fun = comBase two (cons . uncurry fun) . evalList
 
+-- | combinator for (pattern matching some argument) and (apply Either fun)
 com :: (HiMonad m) =>
  ([HiValue] -> Either HiError b1) -- parse
  -> (b1 -> Either HiError b2)     -- fun
@@ -75,14 +89,16 @@ com :: (HiMonad m) =>
  -> ExceptT HiError m b2
 com parse fun = comBaseE parse (ExceptT . return . fun) . evalList
 
+-- | combinator for (pattern matching some argument) and (apply fun)
 comb :: HiMonad m =>
       ([HiValue] -> Either HiError a) -- parse
       -> (a -> HiValue)               -- fun
       -> [HiExpr]                     -- evalList
-      -> MyType m
+      -> ExVal m
 comb parse fun = comBase parse fun . evalList
 
-getFun :: HiMonad m => HiValue -> [HiExpr] -> MyType m
+-- | return function from HiValue
+getFun :: HiMonad m => HiValue -> ([HiExpr] -> ExVal m)
 getFun = \case
   HiValueFunction fun -> case fun of
     HiFunNot            -> oneArg not
@@ -97,7 +113,7 @@ getFun = \case
     HiFunIf             -> parseIf
     HiFunMul            -> funTwoArgMul
     HiFunAdd            -> funTwoArgAdd
-    HiFunSub            -> funTwoArgMinus
+    HiFunSub            -> funTwoArgSub
     HiFunDiv            -> funDivByZero
     HiFunLength         -> funTextLen
     HiFunToUpper        -> oneArg T.toUpper
@@ -128,7 +144,7 @@ getFun = \case
       comb one (maybe (cons ()) (cons @UTCTime) . readMaybe . T.unpack)
     HiFunRand           -> twoArg HiActionRand
     HiFunEcho           -> oneArg HiActionEcho
-    HiFunCount          -> countString
+    HiFunCount          -> count
     HiFunKeys           -> parseJSON fst
     HiFunValues         -> parseJSON snd
     HiFunInvert         -> invertJSON
@@ -138,28 +154,33 @@ getFun = \case
   HiValueDict   json  -> comb one (fromMaybe (cons ()) . (`M.lookup` json))
   _                   -> \_ -> throwE HiErrorInvalidFunction
 
-funAnd :: HiMonad m => [HiExpr] -> MyType m
+-- | lazy and
+funAnd :: HiMonad m => [HiExpr] -> ExVal m
 funAnd [a, b] = evalE a >>= \hi -> if (isTrue hi) then evalE b else return hi
 funAnd _      = throwE HiErrorArityMismatch
 
-funOr :: HiMonad m => [HiExpr] -> MyType m
+-- | lazy or
+funOr :: HiMonad m => [HiExpr] -> ExVal m
 funOr [a, b]  = evalE a >>= \hi -> if (isTrue hi) then return hi else evalE b
 funOr _       = throwE HiErrorArityMismatch
 
-parseIf :: HiMonad m => [HiExpr] -> MyType m
+-- | lazy if, but normal if is lazy too
+parseIf :: HiMonad m => [HiExpr] -> ExVal m
 parseIf [evalE -> a, b, c] = a >>= \case
   (HiValueBool True)  -> evalE b
   (HiValueBool False) -> evalE c
   _                   -> throwE HiErrorInvalidArgument
 parseIf _ = throwE HiErrorArityMismatch
 
-funTwoArgMul :: HiMonad m => [HiExpr] -> MyType m
+-- | multiply two args
+funTwoArgMul :: HiMonad m => [HiExpr] -> ExVal m
 funTwoArgMul list = twoArg ((*) @Rational)                                 list
            <|> twoArg @Text          @Text          @Integer (flip stimes) list
            <|> twoArg @(Seq HiValue) @(Seq HiValue) @Integer (flip stimes) list
            <|> twoArg @ByteString    @ByteString    @Integer (flip stimes) list
 
-funTwoArgAdd :: HiMonad m => [HiExpr] -> MyType m
+-- | sum two args
+funTwoArgAdd :: HiMonad m => [HiExpr] -> ExVal m
 funTwoArgAdd list = twoArg ((+) @Rational) list
                 <|> twoArg T.append        list
                 <|> twoArg ((><) @HiValue) list
@@ -168,50 +189,58 @@ funTwoArgAdd list = twoArg ((+) @Rational) list
   where
     timeAdd = flip $ addUTCTime . secondsToNominalDiffTime . fromRational
 
-funTwoArgMinus :: HiMonad m => [HiExpr] -> MyType m
-funTwoArgMinus list = twoArg ((-) @Rational)                list
-                  <|> twoArg ((toRational .) . diffUTCTime) list
+-- | sub two args
+funTwoArgSub :: HiMonad m => [HiExpr] -> ExVal m
+funTwoArgSub list = twoArg ((-) @Rational)                list
+                <|> twoArg ((toRational .) . diffUTCTime) list
 
-funDivByZero :: HiMonad m => [HiExpr] -> MyType m
+-- | div two Rational or slesh two Text
+funDivByZero :: HiMonad m => [HiExpr] -> ExVal m
 funDivByZero list = twoArg slesh            list
                 <|> com (two @Rational) div list
     where
       div (_, 0) = Left HiErrorDivideByZero
       div (a, b) = Right $ cons $ (/) a b
 
-funTextLen :: HiMonad m => [HiExpr] -> MyType m
-funTextLen list = oneArg (toRational . T.length)          list
-              <|> oneArg (toRational . S.length @HiValue) list
-              <|> oneArg (toRational . B.length)          list
+-- | get length from one arg
+funTextLen :: HiMonad m => [HiExpr] -> ExVal m
+funTextLen list = oneArg (toRational . len @Text)          list
+              <|> oneArg (toRational . len @(Seq HiValue)) list
+              <|> oneArg (toRational . len @(ByteString))  list
 
-funTextRev :: HiMonad m => [HiExpr] -> MyType m
+-- | get reverse from one arg
+funTextRev :: HiMonad m => [HiExpr] -> ExVal m
 funTextRev list = oneArg (T.reverse)          list
               <|> oneArg (S.reverse @HiValue) list
               <|> oneArg (B.reverse)          list
 
-foldFun :: HiMonad m => [HiExpr] -> MyType m
+-- | fold some args, can use lazy function, but seq not lazy
+foldFun :: HiMonad m => [HiExpr] -> ExVal m
 foldFun = comBaseE two (uncurry foldFun') . evalList where
   foldFun' _   (Empty)           = return $ cons ()
   foldFun' _   (x :<| Empty)     = return x
   foldFun' val (F.toList -> seq) = fun `foldl1'` (fmap return seq)
     where
-      fun a b = do 
+      fun a b = do
         a' <- a
-        b' <- b 
+        b' <- b
         getFun val [HiExprValue a', HiExprValue b']
 
-zipFun :: HiMonad m => (L.ByteString -> L.ByteString) -> [HiExpr] -> MyType m
+-- | zip function use lazy bytes
+zipFun :: HiMonad m => (L.ByteString -> L.ByteString) -> [HiExpr] -> ExVal m
 zipFun fun = oneArg (L.toStrict . fun . L.fromStrict)
 
-evalActionWrite :: HiMonad m => [HiExpr] -> MyType m
+-- | we can write Text or ByteString to file
+evalActionWrite :: HiMonad m => [HiExpr] -> ExVal m
 evalActionWrite list = twoArg (flip funWrite) list
                    <|> twoArg funWrite'       list
     where
       funWrite' = HiActionWrite . T.unpack
       funWrite  = flip funWrite' . encodeUtf8
 
-countString :: HiMonad m => [HiExpr] -> MyType m
-countString list = oneArg (toDict . fmap toString . T.unpack) list
+-- | count some args
+count :: HiMonad m => [HiExpr] -> ExVal m
+count list = oneArg (toDict . fmap toString . T.unpack) list
                <|> oneArg (toDict . F.toList @(Seq))          list
                <|> oneArg (toDict . fmap toByte . B.unpack)   list
     where
@@ -227,10 +256,12 @@ countString list = oneArg (toDict . fmap toString . T.unpack) list
 
       countVal str = length . flip filter str . (==)
 
-parseJSON :: HiMonad m => ((HiValue, HiValue) -> HiValue) -> [HiExpr] -> MyType m
+-- | common function for keys and value
+parseJSON :: HiMonad m => ((HiValue, HiValue) -> HiValue) -> [HiExpr] -> ExVal m
 parseJSON fun = oneArg (S.fromList . sort . fmap fun . M.toList)
 
-invertJSON :: HiMonad m => [HiExpr] -> MyType m
+-- | invert dict
+invertJSON :: HiMonad m => [HiExpr] -> ExVal m
 invertJSON = oneArg (M.fromListWith concat0 . pairs)
     where
       pairs :: Map HiValue HiValue -> [(HiValue, HiValue)]
@@ -239,10 +270,11 @@ invertJSON = oneArg (M.fromListWith concat0 . pairs)
       concat0 (HiValueList seq1) (HiValueList seq2) = cons (seq1 >< seq2)
       concat0 _ _ = error "this fine :)"
 
+-- | index some type a
 indexFun :: (Slice a, Index a, Dep a, HiMonad m)
            => a        -- колекция
            -> [HiExpr] -- аргументы
-           -> MyType m -- результат
+           -> ExVal m -- результат
 indexFun lst list = comb one           (index lst)        list
                 <|> comb (two @() @()) (\_ -> fun 0 endN) list
                 <|> comb fstNull       (fun 0)            list
