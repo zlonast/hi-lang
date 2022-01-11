@@ -40,14 +40,13 @@ parensSeq :: Parser HiExpr
 parensSeq = between (symbol "[") (symbol "]") pListSeq
 
 pListSeq :: Parser HiExpr
-pListSeq = HiExprApply (HiExprValue $ cons HiFunList) <$>
-         many (try pBase <|> pExpr)
+pListSeq = HiExprApply (HiExprValue $ cons HiFunList) <$> (try pListBase <|> return [])
 
 parensJSON :: Parser HiExpr
 parensJSON = between (symbol "{") (symbol "}") pListJSON
 
 pListJSON :: Parser HiExpr
-pListJSON = HiExprDict <$> many (try parseOneArgDot <|> parseOneArg)
+pListJSON = HiExprDict <$> (try parseBaseJSON <|> return [])
 
 parseOneArg :: Parser (HiExpr, HiExpr)
 parseOneArg = do
@@ -57,10 +56,13 @@ parseOneArg = do
   return (key, value)
 
 parseOneArgDot :: Parser (HiExpr, HiExpr)
-parseOneArgDot = do
-  (key, value) <- parseOneArg
-  _ <- symbol ","
-  return (key, value)
+parseOneArgDot = symbol "," >> parseOneArg
+
+parseBaseJSON :: Parser [(HiExpr, HiExpr)]
+parseBaseJSON = do 
+  l <- parseOneArg 
+  list <- many parseOneArgDot
+  return (l : list)
 
 pCommonFun :: String -> HiFun -> Parser HiExpr
 pCommonFun str val = do
@@ -126,7 +128,7 @@ pTerm = lexeme $ choice
   , pCommonFun "zip"              HiFunZip
   , pCommonFun "unzip"            HiFunUnzip
   , pCommonFun "serialise"        HiFunSerialise
-  , pCommonFun "deserialise"      HiFunDeserialis
+  , pCommonFun "deserialise"      HiFunDeserialise
   , pCommonFun "read"             HiFunRead
   , pCommonFun "write"            HiFunWrite
   , pCommonFun "mkdir"            HiFunMkDir
@@ -144,15 +146,18 @@ pTerm = lexeme $ choice
   ]
 
 pBase :: Parser HiExpr
-pBase = do
-  e <- pExpr
-  _ <- symbol ","
-  return e
+pBase = symbol "," >> pExpr
+
+pListBase :: Parser [HiExpr]
+pListBase = do 
+  l <- pExpr 
+  list <- many pBase
+  return (l : list)
 
 pList :: Parser [HiExpr]
 pList = do
   _ <- symbol "("
-  list <- many (try pBase <|> pExpr)
+  list <- try pListBase <|> return []
   _ <- symbol ")"
   return list
 
@@ -164,8 +169,8 @@ pDot = do
   return [HiExprValue . cons . pack $ l : list]
 
 recApply :: HiExpr -> [[HiExpr]] -> HiExpr
-recApply fun [] = fun
-recApply fun [a] = HiExprApply fun  a
+recApply fun []       = fun
+recApply fun [a]      = HiExprApply fun a
 recApply fun (a : ls) = HiExprApply (recApply fun ls) a
 
 pApplyR' :: HiExpr -> Parser HiExpr
@@ -183,6 +188,7 @@ pApplyR = pTerm >>= pApplyR'
 pExpr :: Parser HiExpr
 pExpr = makeExprParser pApplyR operatorTable
 
+-- todo: бага с мапой
 operatorTable :: [[Operator Parser HiExpr]]
 operatorTable =
   [ listNot

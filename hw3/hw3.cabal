@@ -38,20 +38,15 @@ library
       src
   default-extensions:
       TemplateHaskell
-      MultiParamTypeClasses
       FlexibleInstances
       ViewPatterns
       TupleSections
-      GADTs
-      FunctionalDependencies
       DerivingStrategies
       DeriveAnyClass
       DeriveGeneric
       FlexibleContexts
       TypeApplications
-      DeriveFunctor
       GeneralizedNewtypeDeriving
-      ScopedTypeVariables
       LambdaCase
       DerivingVia
   build-depends:
@@ -62,6 +57,7 @@ library
     , haskeline
     , lens
     , megaparsec
+    , mtl
     , parser-combinators
     , prettyprinter
     , prettyprinter-ansi-terminal
@@ -83,20 +79,15 @@ executable hi-exe
       app
   default-extensions:
       TemplateHaskell
-      MultiParamTypeClasses
       FlexibleInstances
       ViewPatterns
       TupleSections
-      GADTs
-      FunctionalDependencies
       DerivingStrategies
       DeriveAnyClass
       DeriveGeneric
       FlexibleContexts
       TypeApplications
-      DeriveFunctor
       GeneralizedNewtypeDeriving
-      ScopedTypeVariables
       LambdaCase
       DerivingVia
   ghc-options: -threaded -rtsopts -Wall -Werror -with-rtsopts=-N
@@ -109,6 +100,7 @@ executable hi-exe
     , hw3
     , lens
     , megaparsec
+    , mtl
     , parser-combinators
     , prettyprinter
     , prettyprinter-ansi-terminal
@@ -131,20 +123,15 @@ test-suite hi-test
       test
   default-extensions:
       TemplateHaskell
-      MultiParamTypeClasses
       FlexibleInstances
       ViewPatterns
       TupleSections
-      GADTs
-      FunctionalDependencies
       DerivingStrategies
       DeriveAnyClass
       DeriveGeneric
       FlexibleContexts
       TypeApplications
-      DeriveFunctor
       GeneralizedNewtypeDeriving
-      ScopedTypeVariables
       LambdaCase
       DerivingVia
   ghc-options: -threaded -rtsopts -Wall -Werror -with-rtsopts=-N
@@ -157,6 +144,7 @@ test-suite hi-test
     , hw3
     , lens
     , megaparsec
+    , mtl
     , parser-combinators
     , prettyprinter
     , prettyprinter-ansi-terminal

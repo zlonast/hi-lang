@@ -5,13 +5,13 @@ module HW3.Help (
   MaybeHi(..),
   Index(..),
   Slice(..),
-  IndexFun(..),
   slesh,
   comBase,
   comBaseE,
+  fstNull,
+  sndNull,
   isTrue) where
 
-import Control.Applicative (Alternative((<|>)))
 import Control.Lens (Getting, makePrisms, (^?))
 import Control.Monad ((>=>))
 import Control.Monad.Trans.Except (ExceptT(..))
@@ -28,6 +28,7 @@ import Data.Time.Clock (UTCTime)
 import Data.Word (Word8)
 import HW3.Base (HiAction, HiError(..), HiFun, HiValue(..))
 import Prelude hiding (drop, seq, take)
+import Control.Monad.Trans (lift)
 
 $(makePrisms ''HiValue)
 
@@ -44,6 +45,7 @@ instance Dep ByteString            where cons = HiValueBytes
 instance Dep HiAction              where cons = HiValueAction
 instance Dep UTCTime               where cons = HiValueTime
 instance Dep (Map HiValue HiValue) where cons = HiValueDict
+instance Dep HiValue               where cons = id
 
 tranc :: Rational -> Either HiError Integer
 tranc num = case denominator num == 1 of 
@@ -133,47 +135,29 @@ instance Slice ByteString where
   drop = B.drop
   take = B.take
 
-class (Slice a, Index a, Dep a) => IndexFun a where
-  indexFun :: Monad m
-           => ExceptT HiError m [HiValue]
-           -> a
-           -> ExceptT HiError m HiValue
-  indexFun list lst = comBase list one           (index lst)
-                  <|> comBase list (two @() @()) (\_ -> fun 0 endN)
-                  <|> comBase list sndNum        (fun 0)
-                  <|> comBase list fstNum        (flip fun endN)
-                  <|> comBase list two           (uncurry fun)
-    where
-      fun a b = cons $ (slice a b (len lst)) lst
-      endN = (len lst)
-
-instance IndexFun Text
-instance IndexFun (Seq HiValue)
-instance IndexFun ByteString
-
-sndNum :: [HiValue] -> Either HiError Int
-sndNum [HiValueNull, maybehi -> num] = num
-sndNum [_,_] = Left HiErrorInvalidArgument
-sndNum _ = Left HiErrorArityMismatch
-
-fstNum :: [HiValue] -> Either HiError Int
-fstNum [maybehi -> num, HiValueNull] = num
-fstNum [_,_] = Left HiErrorInvalidArgument
-fstNum _ = Left HiErrorArityMismatch
-
 comBase :: Monad m
-        => ExceptT e m a1
-        -> (a1 -> Either e a2)
-        -> (a2 -> b)
+        => (a1 -> Either e a2)  -- parse 
+        -> (a2 -> b)            -- fun
+        -> ExceptT e m a1       -- evalList
         -> ExceptT e m b
-comBase evalList parse fun = comBaseE evalList parse (return . fun)
+comBase parse fun = comBaseE parse (lift . return . fun)
 
 comBaseE :: Monad m
-         => ExceptT e m a
-         -> (a -> Either e b1)
-         -> (b1 -> Either e b2)
+         => (a -> Either e b1)     -- parse 
+         -> (b1 -> ExceptT e m b2) -- fun
+         -> ExceptT e m a          -- evalList
          -> ExceptT e m b2
-comBaseE evalList parse fun = evalList >>= (ExceptT . return . (parse >=> fun))
+comBaseE parse fun evalList = evalList >>= (ExceptT . return . parse >=> fun)
+
+fstNull :: MaybeHi a => [HiValue] -> Either HiError a
+fstNull [HiValueNull, maybehi -> num] = num
+fstNull [_,_] = Left HiErrorInvalidArgument
+fstNull _ = Left HiErrorArityMismatch
+
+sndNull :: MaybeHi a => [HiValue] -> Either HiError a
+sndNull [maybehi -> num, HiValueNull] = num
+sndNull [_,_] = Left HiErrorInvalidArgument
+sndNull _ = Left HiErrorArityMismatch
 
 isTrue :: HiValue -> Bool
 isTrue HiValueNull         = False

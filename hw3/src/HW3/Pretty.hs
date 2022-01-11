@@ -50,7 +50,7 @@ prettyAction :: HiAction -> Doc AnsiStyle
 prettyAction hi = pretty $ case hi of
   HiActionRead path  -> "read(" ++ show path ++ ")"
   HiActionWrite path bytes ->
-    L.intercalate "" ["write(", show path, ",", showByteString bytes, ")"]
+    L.intercalate "" ["write(", show path, ", ", showByteString bytes, ")"]
   HiActionMkDir path -> "mkdir(" ++ show path ++ ")"
   HiActionChDir path -> "cd(" ++ show path ++ ")"
   HiActionCwd        -> "cwd"
@@ -95,12 +95,12 @@ prettyFun hi = pretty $ case hi of
   HiFunFold           -> "fold"
   HiFunPackBytes      -> "pack-bytes"
   HiFunUnpackBytes    -> "unpack-bytes"
-  HiFunEncodeUtf8     -> "zip"
-  HiFunDecodeUtf8     -> "unzip"
-  HiFunZip            -> "encode-utf8"
-  HiFunUnzip          -> "decode-utf8"
+  HiFunEncodeUtf8     -> "encode-utf8"
+  HiFunDecodeUtf8     -> "decode-utf8"
+  HiFunZip            -> "zip"
+  HiFunUnzip          -> "unzip" 
   HiFunSerialise      -> "serialise"
-  HiFunDeserialis     -> "deserialise"
+  HiFunDeserialise    -> "deserialise"
   HiFunRead           -> "read"
   HiFunWrite          -> "write"
   HiFunMkDir          -> "mkdir"

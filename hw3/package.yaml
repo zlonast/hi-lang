@@ -36,25 +36,21 @@ dependencies:
 - time
 - random
 - transformers
+- mtl
 - template-haskell
 - lens
 
 default-extensions:
 - TemplateHaskell
-- MultiParamTypeClasses
 - FlexibleInstances
 - ViewPatterns
 - TupleSections
-- GADTs
-- FunctionalDependencies
 - DerivingStrategies
 - DeriveAnyClass
 - DeriveGeneric
 - FlexibleContexts
 - TypeApplications
-- DeriveFunctor
 - GeneralizedNewtypeDeriving
-- ScopedTypeVariables
 - LambdaCase
 - DerivingVia
 

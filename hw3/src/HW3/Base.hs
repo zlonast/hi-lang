@@ -45,7 +45,7 @@ data HiFun =
   | HiFunZip
   | HiFunUnzip
   | HiFunSerialise
-  | HiFunDeserialis
+  | HiFunDeserialise
   | HiFunRead
   | HiFunWrite
   | HiFunMkDir
